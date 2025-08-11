@@ -6,21 +6,19 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from tensorflow.keras.applications import VGG19
 import xgboost as xgb
 
-# Setup Flask
 app = Flask(__name__)
 
-# Load VGG19 sesuai notebook
+# Load VGG19
 vgg_model = VGG19(weights='imagenet', include_top=False, pooling='avg')
 
 # Load model XGBoost
 xgb_model = xgb.XGBClassifier()
-xgb_model.load_model("xgb_model_vgg19.json")
+xgb_model.load_model("model_xgb.json")
 
 # Load Label Encoder
-with open("label_encoder_vgg19.pkl", "rb") as f:
+with open("label_encoder.pkl", "rb") as f:
     label_encoder = pickle.load(f)
 
-# Ekstraksi fitur (sama seperti notebook)
 def extract_features(img_path):
     image = load_img(img_path, target_size=(224, 224))
     image = img_to_array(image)
@@ -37,16 +35,16 @@ def index():
             filepath = os.path.join("static", file.filename)
             file.save(filepath)
 
-            # Ekstrak fitur
             features = extract_features(filepath)
 
-            # Prediksi
             pred_class_idx = xgb_model.predict(features)[0]
             pred_class_name = label_encoder.inverse_transform([pred_class_idx])[0]
 
-            # Probabilitas
             probas = xgb_model.predict_proba(features)[0]
-            probas_dict = {label_encoder.inverse_transform([i])[0]: float(probas[i]) for i in range(len(probas))}
+            probas_dict = {
+                label_encoder.inverse_transform([i])[0]: float(probas[i])
+                for i in range(len(probas))
+            }
 
             return render_template(
                 "index.html",
@@ -57,5 +55,4 @@ def index():
     return render_template("index.html")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 7860)))
